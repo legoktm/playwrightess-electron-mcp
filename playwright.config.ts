@@ -14,6 +14,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     storageState: './shared-storage-state.json',
+    timeout: 8000,
   },
 
   projects: [
