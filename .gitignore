@@ -2,3 +2,4 @@ node_modules
 dist
 .claude
 .mcp.json
+.playwright-session

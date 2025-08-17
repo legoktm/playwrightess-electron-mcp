@@ -175,7 +175,9 @@ class PlaywrightMCPServer {
               - Evaluate JavaScript code in a persistent Playwright context.
               - Variables like browser, context, and page are maintained between evaluations.
               - Supports top-level await
+              - If you take screenshots, place them in a temp folder
               - DO NOT USE "waitForLoadState('networkidle') WHICH IS BUGGY"
+              - ONLY USE SCREENSHOTS AS LAST RESORT
             `,
             inputSchema: {
               type: 'object',
