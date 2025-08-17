@@ -31,15 +31,15 @@ You can send JavaScript code to be evaluated step by step:
 ```javascript
 // Setup
 browser = await chromium.launch();
-context = await browser.newContext(devices['iPhone 11']);
+context = await browser.newContext(devices["iPhone 11"]);
 page = await context.newPage();
 ```
 
 ```javascript
 // Navigation and interaction
-await page.goto('https://example.com/');
+await page.goto("https://example.com/");
 const title = await page.title();
-console.log('Page title:', title);
+console.log("Page title:", title);
 ```
 
 ```javascript
@@ -51,6 +51,6 @@ await browser.close();
 ## Tool Schema
 
 - **Name**: `playwright_eval`
-- **Input**: 
+- **Input**:
   - `code` (string): JavaScript code to evaluate
 - **Output**: JSON with execution result or error details
