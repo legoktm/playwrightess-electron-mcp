@@ -172,9 +172,10 @@ class PlaywrightMCPServer {
           {
             name: 'playwright_eval',
             description: `
-              Evaluate JavaScript code in a persistent Playwright context.
-              Variables like browser, context, and page are maintained between evaluations.
-              Supports top-level await
+              - Evaluate JavaScript code in a persistent Playwright context.
+              - Variables like browser, context, and page are maintained between evaluations.
+              - Supports top-level await
+              - DO NOT USE "waitForLoadState('networkidle') WHICH IS BUGGY"
             `,
             inputSchema: {
               type: 'object',
