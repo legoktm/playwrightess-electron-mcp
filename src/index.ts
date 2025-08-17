@@ -79,6 +79,8 @@ class PlaywrightMCPServer {
   private context!: vm.Context;
   private isInitialized = false;
   private sessionManager: SingleBrowserSessionManager;
+  private consoleMessages: string[] = [];
+  private consoleHandlerRegistered = false;
 
   constructor() {
     this.sessionManager = SingleBrowserSessionManager.getInstance();
@@ -162,6 +164,18 @@ class PlaywrightMCPServer {
         globalThis.context = context;
         globalThis.page = page;
       `, this.context);
+      
+      // Register console handler for the page
+      this.registerConsoleHandler(pageInstance);
+    }
+  }
+
+  private registerConsoleHandler(page: playwright.Page) {
+    if (!this.consoleHandlerRegistered) {
+      page.on('console', (msg) => {
+        this.consoleMessages.push(msg.text());
+      });
+      this.consoleHandlerRegistered = true;
     }
   }
 
@@ -223,6 +237,10 @@ class PlaywrightMCPServer {
         // The result will always be a Promise due to the async wrapper
         const finalResult = await result;
 
+        // Capture console log messages and clear them
+        const consoleLogMessages = [...this.consoleMessages];
+        this.consoleMessages.length = 0;
+
         return {
           content: [
             {
@@ -230,12 +248,17 @@ class PlaywrightMCPServer {
               text: JSON.stringify({
                 success: true,
                 result: finalResult !== undefined ? finalResult : 'undefined',
-                type: typeof finalResult
+                type: typeof finalResult,
+                consoleLogMessages
               }, null, 2)
             }
           ]
         };
       } catch (error) {
+        // Capture console log messages and clear them even on error
+        const consoleLogMessages = [...this.consoleMessages];
+        this.consoleMessages.length = 0;
+
         return {
           content: [
             {
@@ -243,7 +266,8 @@ class PlaywrightMCPServer {
               text: JSON.stringify({
                 success: false,
                 error: error instanceof Error ? error.message : String(error),
-                stack: error instanceof Error ? error.stack : undefined
+                stack: error instanceof Error ? error.stack : undefined,
+                consoleLogMessages
               }, null, 2)
             }
           ]
