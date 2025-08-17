@@ -80,6 +80,7 @@ class PlaywrightMCPServer {
   private isInitialized = false;
   private sessionManager: SingleBrowserSessionManager;
   private consoleMessages: string[] = [];
+  private sessionConsoleMessages: string[] = [];
   private consoleHandlerRegistered = false;
 
   constructor() {
@@ -108,9 +109,48 @@ class PlaywrightMCPServer {
     // but delay actual browser/context/page initialization until first use
     const require = createRequire(import.meta.url);
     
+    // Create a patched console that captures session console calls
+    const sessionConsole = {
+      log: (...args: any[]) => {
+        const message = args.map(arg => 
+          typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+        ).join(' ');
+        this.sessionConsoleMessages.push(`[LOG] ${message}`);
+        console.log(...args);
+      },
+      warn: (...args: any[]) => {
+        const message = args.map(arg => 
+          typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+        ).join(' ');
+        this.sessionConsoleMessages.push(`[WARN] ${message}`);
+        console.warn(...args);
+      },
+      error: (...args: any[]) => {
+        const message = args.map(arg => 
+          typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+        ).join(' ');
+        this.sessionConsoleMessages.push(`[ERROR] ${message}`);
+        console.error(...args);
+      },
+      info: (...args: any[]) => {
+        const message = args.map(arg => 
+          typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+        ).join(' ');
+        this.sessionConsoleMessages.push(`[INFO] ${message}`);
+        console.info(...args);
+      },
+      debug: (...args: any[]) => {
+        const message = args.map(arg => 
+          typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+        ).join(' ');
+        this.sessionConsoleMessages.push(`[DEBUG] ${message}`);
+        console.debug(...args);
+      }
+    };
+
     const contextObject = {
-      // Node.js built-ins
-      console,
+      // Node.js built-ins - using patched console
+      console: sessionConsole,
       setTimeout,
       setInterval,
       clearTimeout,
@@ -238,8 +278,10 @@ class PlaywrightMCPServer {
         const finalResult = await result;
 
         // Capture console log messages and clear them
-        const consoleLogMessages = [...this.consoleMessages];
+        const browserConsoleLog = [...this.consoleMessages];
+        const sessionConsoleLog = [...this.sessionConsoleMessages];
         this.consoleMessages.length = 0;
+        this.sessionConsoleMessages.length = 0;
 
         return {
           content: [
@@ -249,15 +291,18 @@ class PlaywrightMCPServer {
                 success: true,
                 result: finalResult !== undefined ? finalResult : 'undefined',
                 type: typeof finalResult,
-                consoleLogMessages
+                browserConsoleLog,
+                sessionConsoleLog
               }, null, 2)
             }
           ]
         };
       } catch (error) {
         // Capture console log messages and clear them even on error
-        const consoleLogMessages = [...this.consoleMessages];
+        const browserConsoleLog = [...this.consoleMessages];
+        const sessionConsoleLog = [...this.sessionConsoleMessages];
         this.consoleMessages.length = 0;
+        this.sessionConsoleMessages.length = 0;
 
         return {
           content: [
@@ -267,7 +312,8 @@ class PlaywrightMCPServer {
                 success: false,
                 error: error instanceof Error ? error.message : String(error),
                 stack: error instanceof Error ? error.stack : undefined,
-                consoleLogMessages
+                browserConsoleLog,
+                sessionConsoleLog
               }, null, 2)
             }
           ]
