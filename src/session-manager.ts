@@ -59,6 +59,7 @@ export class SingleBrowserSessionManager {
       });
 
       this.context.setDefaultNavigationTimeout(8000);
+      this.context.setDefaultTimeout(8000);
     }
     return this.browser;
   }
