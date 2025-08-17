@@ -2,12 +2,11 @@
 
 An MCP (Model Context Protocol) server that provides a persistent Playwright evaluation environment.
 
-## Features
+Unlike Playwright MCP this takes a very different approach.  It exposes a JavaScript progrmaming
+interface with persistence between calls.  This allows the agent to write against the playwright
+API with a single ubertool called `playwright_eval`.
 
-- Single tool: `playwright_eval` - evaluates JavaScript code in a persistent Playwright context
-- Maintains state between evaluations (browser, context, page variables persist)
-- Pre-loaded with Playwright modules and common Node.js built-ins
-- Supports step-by-step script execution
+This is an experiment and intentionally not published.
 
 ## Installation
 
@@ -18,39 +17,23 @@ npm run build
 
 ## Usage
 
-Start the MCP server:
+Configure the MCP server:
 
 ```bash
-npm start
+{
+  "mcpServers": {
+    "playwriter-mcp": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/path/to/dist/index.js"],
+      "env": {}
+    }
+  }
+}
 ```
 
-### Example Usage
+## License
 
-You can send JavaScript code to be evaluated step by step:
+This is built with Claude and might not be copyrightable.  Otherwise consider it Apache 2.0.
 
-```javascript
-// Setup
-browser = await chromium.launch();
-context = await browser.newContext(devices["iPhone 11"]);
-page = await context.newPage();
-```
-
-```javascript
-// Navigation and interaction
-await page.goto("https://example.com/");
-const title = await page.title();
-console.log("Page title:", title);
-```
-
-```javascript
-// Teardown (when done)
-await context.close();
-await browser.close();
-```
-
-## Tool Schema
-
-- **Name**: `playwright_eval`
-- **Input**:
-  - `code` (string): JavaScript code to evaluate
-- **Output**: JSON with execution result or error details
+- License: [Apache-2.0](https://github.com/mitsuhiko/playwrightess-mcp/blob/main/LICENSE)

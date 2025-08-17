@@ -268,6 +268,7 @@ class PlaywrightMCPServer {
               - If you take screenshots, place them in a temp folder
               - DO NOT USE "waitForLoadState('networkidle') WHICH IS BUGGY"
               - ONLY USE SCREENSHOTS AS LAST RESORT
+              - DO NOT WRITE COMMENTS
             `,
             inputSchema: {
               type: "object",
