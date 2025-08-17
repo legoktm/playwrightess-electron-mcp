@@ -10,6 +10,7 @@ import * as vm from 'node:vm';
 import * as playwright from 'playwright';
 import { createRequire } from 'node:module';
 import assert from 'node:assert';
+import { SingleBrowserSessionManager } from './session-manager.js';
 import { parse } from '@babel/parser';
 import traverse, { NodePath } from '@babel/traverse';
 // @ts-ignore
@@ -19,7 +20,7 @@ import generate from '@babel/generator';
 // @ts-ignore
 const generateDefault = generate.default || generate;
 
-const TRACKED_VARIABLES = new Set(['page', 'browser', 'context']);
+const TRACKED_VARIABLES = new Set(['page', 'browser', 'context', 'sessionManager']);
 
 function rewriteCodeToTrackVariables(code: string): string {
   try {
@@ -77,8 +78,10 @@ class PlaywrightMCPServer {
   private server: Server;
   private context!: vm.Context;
   private isInitialized = false;
+  private sessionManager: SingleBrowserSessionManager;
 
   constructor() {
+    this.sessionManager = SingleBrowserSessionManager.getInstance();
     this.server = new Server(
       {
         name: 'playwrightess-mcp',
@@ -92,12 +95,17 @@ class PlaywrightMCPServer {
     );
 
     this.setupHandlers();
-    this.initializeContext();
   }
 
-  private initializeContext() {
-    // Create a persistent VM context with Playwright and Node.js built-ins
+  async initialize() {
+    await this.initializeContext();
+  }
+
+  private async initializeContext() {
+    // Create a persistent VM context with Node.js built-ins and Playwright modules
+    // but delay actual browser/context/page initialization until first use
     const require = createRequire(import.meta.url);
+    
     const contextObject = {
       // Node.js built-ins
       console,
@@ -116,10 +124,8 @@ class PlaywrightMCPServer {
       webkit: playwright.webkit,
       devices: playwright.devices,
 
-      // commons
-      browser: undefined,
-      context: undefined,
-      page: undefined,
+      // Session manager for advanced operations
+      sessionManager: this.sessionManager,
       
       // Global state object for user variables
       state: {},
@@ -132,7 +138,31 @@ class PlaywrightMCPServer {
     this.isInitialized = true;
 
     vm.runInContext("const global = globalThis; const self = globalThis;", this.context);
+  }
 
+  private async ensurePlaywrightInitialized() {
+    // Check if Playwright instances are already available in the context
+    const browser = vm.runInContext("typeof browser !== 'undefined' ? browser : null", this.context);
+    const context = vm.runInContext("typeof context !== 'undefined' ? context : null", this.context);
+    const page = vm.runInContext("typeof page !== 'undefined' ? page : null", this.context);
+
+    if (!browser || !context || !page) {
+      // Initialize session manager instances
+      const browserInstance = await this.sessionManager.ensureBrowser();
+      const contextInstance = await this.sessionManager.ensureContext();
+      const pageInstance = await this.sessionManager.ensurePage();
+      
+      // Add them to the VM context
+      this.context.browser = browserInstance;
+      this.context.context = contextInstance;
+      this.context.page = pageInstance;
+      
+      vm.runInContext(`
+        globalThis.browser = browser;
+        globalThis.context = context;
+        globalThis.page = page;
+      `, this.context);
+    }
   }
 
   private setupHandlers() {
@@ -173,6 +203,9 @@ class PlaywrightMCPServer {
       }
 
       try {
+        // Ensure Playwright is initialized before executing code
+        await this.ensurePlaywrightInitialized();
+        
         // Rewrite the code to track variable assignments
         const rewrittenCode = rewriteCodeToTrackVariables(code);
         
@@ -217,6 +250,7 @@ class PlaywrightMCPServer {
   }
 
   async run() {
+    await this.initialize();
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
     console.error('Playwrightess MCP server running on stdio');
@@ -224,4 +258,21 @@ class PlaywrightMCPServer {
 }
 
 const server = new PlaywrightMCPServer();
+
+process.on('SIGINT', async () => {
+  console.error('Gracefully shutting down...');
+  const sessionManager = SingleBrowserSessionManager.getInstance();
+  await sessionManager.saveStorageState();
+  await sessionManager.cleanup();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.error('Gracefully shutting down...');
+  const sessionManager = SingleBrowserSessionManager.getInstance();
+  await sessionManager.saveStorageState();
+  await sessionManager.cleanup();
+  process.exit(0);
+});
+
 server.run().catch(console.error);
