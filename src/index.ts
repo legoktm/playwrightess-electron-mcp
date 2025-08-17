@@ -191,7 +191,7 @@ class PlaywrightMCPServer {
       sessionManager: this.sessionManager,
 
       // Global state object for user variables
-      state: {},
+      sharedState: {},
 
       // Other commonly used modules
       assert,
@@ -264,11 +264,14 @@ class PlaywrightMCPServer {
             description: `
               - Evaluate JavaScript code in a persistent Playwright context.
               - Variables like browser, context, and page are maintained between evaluations.
+              - the sharedState object is maintained between evaluations.
+              - if you want to accumulate data, put it into sharedState.
               - Supports top-level await
               - If you take screenshots, place them in a temp folder
               - DO NOT USE "waitForLoadState('networkidle') WHICH IS BUGGY"
               - ONLY USE SCREENSHOTS AS LAST RESORT
               - DO NOT WRITE COMMENTS
+              - DO NOT USE NEWLINES OR INDENTATION WHEN WRITING CODE
             `,
             inputSchema: {
               type: "object",
