@@ -272,6 +272,7 @@ class PlaywrightMCPServer {
               "Use screenshots as last resort",
               "Only use console.log if you need it",
               "DO NOT USE \"waitForLoadState('networkidle')\"",
+              "DO NOT USE \"waitForSelector\"",
               "DO NOT WRITE COMMENTS",
               "DO NOT USE NEWLINES OR WHITESPACE BETWEEN WHEN WRITING CODE",
             ].join("\n"),
