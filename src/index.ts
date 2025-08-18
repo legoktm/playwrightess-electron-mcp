@@ -261,19 +261,20 @@ class PlaywrightMCPServer {
         tools: [
           {
             name: "playwright_eval",
-            description: `
-              - Evaluate JavaScript code in a persistent Playwright context.
-              - Variables like browser, context, and page are maintained between evaluations.
-              - The sharedState object is maintained between evaluations.
-              - If you want to accumulate data, put it into sharedState.
-              - Supports top-level await
-              - If you take screenshots, place them in a temp folder
-              - Only use screenshots as last resort
-              - Only use console.log if you need it
-              - DO NOT USE "waitForLoadState('networkidle')"
-              - DO NOT WRITE COMMENTS
-              - DO NOT USE NEWLINES OR WHITESPACE BETWEEN WHEN WRITING CODE
-            `,
+            description: [
+              "Evaluate JavaScript code in a persistent Playwright context.",
+              "Variables like browser, context, and page are maintained between evaluations.",
+              "Other local variables are lost between evaluations!",
+              "The sharedState object is maintained between evaluations.",
+              "If you want to accumulate data, put it into sharedState.",
+              "Supports top-level await",
+              "If you take screenshots, place them in a temp folder",
+              "Use screenshots as last resort",
+              "Only use console.log if you need it",
+              "DO NOT USE \"waitForLoadState('networkidle')\"",
+              "DO NOT WRITE COMMENTS",
+              "DO NOT USE NEWLINES OR WHITESPACE BETWEEN WHEN WRITING CODE",
+            ].join("\n"),
             inputSchema: {
               type: "object",
               properties: {
