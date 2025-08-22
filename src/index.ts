@@ -44,9 +44,9 @@ function rewriteCodeToTrackVariables(code: string): string {
             "=",
             t.memberExpression(
               t.identifier("globalThis"),
-              t.identifier(id.name),
+              t.identifier(id.name)
             ),
-            t.identifier(id.name),
+            t.identifier(id.name)
           );
           const expressionStatement = t.expressionStatement(assignment);
 
@@ -64,9 +64,9 @@ function rewriteCodeToTrackVariables(code: string): string {
             "=",
             t.memberExpression(
               t.identifier("globalThis"),
-              t.identifier(left.name),
+              t.identifier(left.name)
             ),
-            t.identifier(left.name),
+            t.identifier(left.name)
           );
           const expressionStatement = t.expressionStatement(globalAssignment);
 
@@ -105,7 +105,7 @@ class PlaywrightMCPServer {
         capabilities: {
           tools: {},
         },
-      },
+      }
     );
 
     this.setupHandlers();
@@ -125,7 +125,7 @@ class PlaywrightMCPServer {
       log: (...args: any[]) => {
         const message = args
           .map((arg) =>
-            typeof arg === "object" ? JSON.stringify(arg) : String(arg),
+            typeof arg === "object" ? JSON.stringify(arg) : String(arg)
           )
           .join(" ");
         this.sessionConsoleMessages.push(`[LOG] ${message}`);
@@ -134,7 +134,7 @@ class PlaywrightMCPServer {
       warn: (...args: any[]) => {
         const message = args
           .map((arg) =>
-            typeof arg === "object" ? JSON.stringify(arg) : String(arg),
+            typeof arg === "object" ? JSON.stringify(arg) : String(arg)
           )
           .join(" ");
         this.sessionConsoleMessages.push(`[WARN] ${message}`);
@@ -143,7 +143,7 @@ class PlaywrightMCPServer {
       error: (...args: any[]) => {
         const message = args
           .map((arg) =>
-            typeof arg === "object" ? JSON.stringify(arg) : String(arg),
+            typeof arg === "object" ? JSON.stringify(arg) : String(arg)
           )
           .join(" ");
         this.sessionConsoleMessages.push(`[ERROR] ${message}`);
@@ -152,7 +152,7 @@ class PlaywrightMCPServer {
       info: (...args: any[]) => {
         const message = args
           .map((arg) =>
-            typeof arg === "object" ? JSON.stringify(arg) : String(arg),
+            typeof arg === "object" ? JSON.stringify(arg) : String(arg)
           )
           .join(" ");
         this.sessionConsoleMessages.push(`[INFO] ${message}`);
@@ -161,7 +161,7 @@ class PlaywrightMCPServer {
       debug: (...args: any[]) => {
         const message = args
           .map((arg) =>
-            typeof arg === "object" ? JSON.stringify(arg) : String(arg),
+            typeof arg === "object" ? JSON.stringify(arg) : String(arg)
           )
           .join(" ");
         this.sessionConsoleMessages.push(`[DEBUG] ${message}`);
@@ -202,7 +202,7 @@ class PlaywrightMCPServer {
 
     vm.runInContext(
       "const global = globalThis; const self = globalThis;",
-      this.context,
+      this.context
     );
   }
 
@@ -210,15 +210,15 @@ class PlaywrightMCPServer {
     // Check if Playwright instances are already available in the context
     const browser = vm.runInContext(
       "typeof browser !== 'undefined' ? browser : null",
-      this.context,
+      this.context
     );
     const context = vm.runInContext(
       "typeof context !== 'undefined' ? context : null",
-      this.context,
+      this.context
     );
     const page = vm.runInContext(
       "typeof page !== 'undefined' ? page : null",
-      this.context,
+      this.context
     );
 
     if (!browser || !context || !page) {
@@ -238,7 +238,7 @@ class PlaywrightMCPServer {
         globalThis.context = context;
         globalThis.page = page;
       `,
-        this.context,
+        this.context
       );
 
       // Register console handler for the page
@@ -262,27 +262,19 @@ class PlaywrightMCPServer {
           {
             name: "playwright_eval",
             description: [
-              "Evaluate JavaScript code in a persistent Playwright context.",
-              "Variables like browser, context, and page are maintained between evaluations.",
-              "Other local variables are lost between evaluations!",
-              "The sharedState object is maintained between evaluations.",
-              "If you want to accumulate data, put it into sharedState.",
-              "Supports top-level await",
-              "If you take screenshots, place them in a temp folder",
-              "Use screenshots as last resort",
-              "Only use console.log if you need it",
-              "DO NOT USE \"waitForLoadState('networkidle')\"",
-              "DO NOT USE \"waitForSelector\"",
-              "DO NOT WRITE COMMENTS",
-              "DO NOT USE NEWLINES OR WHITESPACE BETWEEN WHEN WRITING CODE",
+              "Evaluate JavaScript code (supports await) in a persistent Playwright context.",
+              "Variables sharedState, browser, context, page are maintained between evaluations, others are lost.",
+              "To accumulate data, put it into sharedState.",
+              "Place screenshots in temp folder",
+              "DO NOT USE waitForLoadState('networkidle') or waitForSelector",
+              "DO NOT CODE COMMENTS OR WHITSPACE",
             ].join("\n"),
             inputSchema: {
               type: "object",
               properties: {
                 code: {
                   type: "string",
-                  description:
-                    "JavaScript code to evaluate in the Playwright context",
+                  description: "JavaScript code to evaluate",
                 },
               },
               required: ["code"],
@@ -331,14 +323,12 @@ class PlaywrightMCPServer {
           content: [
             {
               type: "text",
-              text: JSON.stringify(
-                {
-                  success: true,
-                  result: finalResult !== undefined ? finalResult : "undefined",
-                  browserConsoleLog,
-                  sessionConsoleLog,
-                },
-              ),
+              text: JSON.stringify({
+                success: true,
+                result: finalResult !== undefined ? finalResult : "undefined",
+                browserConsoleLog,
+                sessionConsoleLog,
+              }),
             },
           ],
         };
@@ -353,15 +343,13 @@ class PlaywrightMCPServer {
           content: [
             {
               type: "text",
-              text: JSON.stringify(
-                {
-                  success: false,
-                  error: error instanceof Error ? error.message : String(error),
-                  stack: error instanceof Error ? error.stack : undefined,
-                  browserConsoleLog,
-                  sessionConsoleLog,
-                },
-              ),
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined,
+                browserConsoleLog,
+                sessionConsoleLog,
+              }),
             },
           ],
         };
