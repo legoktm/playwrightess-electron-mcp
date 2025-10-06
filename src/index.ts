@@ -22,9 +22,9 @@ const generateDefault = generate.default || generate;
 
 const TRACKED_VARIABLES = new Set([
   "page",
-  "browser",
   "context",
   "sessionManager",
+  "electronApp",
 ]);
 
 function rewriteCodeToTrackVariables(code: string): string {
@@ -182,10 +182,7 @@ class PlaywrightMCPServer {
 
       // Playwright modules
       playwright,
-      chromium: playwright.chromium,
-      firefox: playwright.firefox,
-      webkit: playwright.webkit,
-      devices: playwright.devices,
+      _electron: (playwright as any)._electron,
 
       // Session manager for advanced operations
       sessionManager: this.sessionManager,
@@ -207,34 +204,31 @@ class PlaywrightMCPServer {
   }
 
   private async ensurePlaywrightInitialized() {
-    // Check if Playwright instances are already available in the context
-    const browser = vm.runInContext(
-      "typeof browser !== 'undefined' ? browser : null",
-      this.context
-    );
-    const context = vm.runInContext(
-      "typeof context !== 'undefined' ? context : null",
-      this.context
-    );
-    const page = vm.runInContext(
+    // Check if instances are already available in the context
+    const existingPage = vm.runInContext(
       "typeof page !== 'undefined' ? page : null",
       this.context
     );
 
-    if (!browser || !context || !page) {
-      // Initialize session manager instances
-      const browserInstance = await this.sessionManager.ensureBrowser();
+    if (!existingPage) {
+      // Only initialize if electronPath is set - otherwise let user code call setElectronMode first
+      if (!this.sessionManager.electronPath) {
+        return; // Skip initialization, let user configure via setElectronMode
+      }
+
+      // Initialize Electron app instances
+      const electronAppInstance = await this.sessionManager.ensureElectronApp();
       const contextInstance = await this.sessionManager.ensureContext();
       const pageInstance = await this.sessionManager.ensurePage();
 
       // Add them to the VM context
-      this.context.browser = browserInstance;
+      this.context.electronApp = electronAppInstance;
       this.context.context = contextInstance;
       this.context.page = pageInstance;
 
       vm.runInContext(
         `
-        globalThis.browser = browser;
+        globalThis.electronApp = electronApp;
         globalThis.context = context;
         globalThis.page = page;
       `,
@@ -262,12 +256,13 @@ class PlaywrightMCPServer {
           {
             name: "playwright_eval",
             description: [
-              "Evaluate JavaScript code (supports await) in a persistent Playwright context.",
-              "Variables sharedState, browser, context, page are maintained between evaluations, others are lost.",
+              "Evaluate JavaScript code (supports await) in a persistent Playwright Electron context.",
+              "Variables sharedState, context, page, electronApp are maintained between evaluations, others are lost.",
               "To accumulate data, put it into sharedState.",
               "Place screenshots in temp folder",
               "DO NOT USE waitForLoadState('networkidle') or waitForSelector",
-              "DO NOT CODE COMMENTS OR WHITSPACE",
+              "DO NOT CODE COMMENTS OR WHITESPACE",
+              "Use sessionManager.setElectronMode(executablePath, args) before first use.",
             ].join("\n"),
             inputSchema: {
               type: "object",

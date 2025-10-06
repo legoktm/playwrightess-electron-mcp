@@ -1,17 +1,15 @@
 import * as playwright from "playwright";
-import * as path from "path";
-import { spawn } from "child_process";
+import type { ElectronApplication } from "playwright";
 
 export class SingleBrowserSessionManager {
   private static instance: SingleBrowserSessionManager;
-  private browser: playwright.Browser | null = null;
+  private electronApp: ElectronApplication | null = null;
   private context: playwright.BrowserContext | null = null;
   private page: playwright.Page | null = null;
-  private userDataDir: string;
+  public electronPath: string | null = null;
+  private electronArgs: string[] = [];
 
-  private constructor() {
-    this.userDataDir = path.join(process.cwd(), ".playwright-session");
-  }
+  private constructor() {}
 
   static getInstance(): SingleBrowserSessionManager {
     if (!SingleBrowserSessionManager.instance) {
@@ -20,62 +18,49 @@ export class SingleBrowserSessionManager {
     return SingleBrowserSessionManager.instance;
   }
 
-  private async killExistingChromiumProcesses(): Promise<void> {
-    return new Promise((resolve) => {
-      const killProcess = spawn("pkill", ["-f", "chromium.*--user-data-dir"]);
-      killProcess.on("close", () => resolve());
-    });
+  setElectronMode(electronPath: string, args: string[] = []): void {
+    this.electronPath = electronPath;
+    this.electronArgs = args;
   }
 
-  async ensureBrowser(): Promise<playwright.Browser> {
-    if (!this.browser || !this.browser.isConnected()) {
-      await this.killExistingChromiumProcesses();
+  async ensureElectronApp(): Promise<ElectronApplication> {
+    if (!this.electronApp) {
+      if (!this.electronPath) {
+        throw new Error("Electron path not set. Call setElectronMode() first.");
+      }
 
-      // Use launchPersistentContext when using userDataDir
-      this.context = await playwright.chromium.launchPersistentContext(
-        this.userDataDir,
-        {
-          headless: false,
-          args: [
-            "--disable-web-security",
-            "--disable-features=VizDisplayCompositor",
-            "--no-first-run",
-            "--disable-default-apps",
-          ],
-          viewport: { width: 1280, height: 720 },
-          userAgent:
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        },
-      );
+      const { _electron } = playwright as any;
+      const app = await _electron.launch({
+        executablePath: this.electronPath,
+        args: this.electronArgs,
+      });
 
-      // Get the browser from the persistent context
-      this.browser = this.context.browser()!;
+      this.electronApp = app;
 
-      this.browser.on("disconnected", () => {
-        console.error("Browser disconnected unexpectedly");
-        this.browser = null;
+      app.on("close", () => {
+        console.error("Electron app closed");
+        this.electronApp = null;
         this.context = null;
         this.page = null;
       });
-
-      this.context.setDefaultNavigationTimeout(8000);
-      this.context.setDefaultTimeout(8000);
     }
-    return this.browser;
+    return this.electronApp!;
   }
 
   async ensureContext(): Promise<playwright.BrowserContext> {
-    if (!this.context) {
-      // Context is now created in ensureBrowser() via launchPersistentContext
-      await this.ensureBrowser();
+    if (!this.electronApp) {
+      await this.ensureElectronApp();
     }
-    return this.context!;
+    this.context = this.electronApp!.context();
+    return this.context;
   }
 
   async ensurePage(): Promise<playwright.Page> {
+    if (!this.electronApp) {
+      await this.ensureElectronApp();
+    }
     if (!this.page || this.page.isClosed()) {
-      const context = await this.ensureContext();
-      this.page = await context.newPage();
+      this.page = await this.electronApp!.firstWindow();
     }
     return this.page;
   }
@@ -88,38 +73,19 @@ export class SingleBrowserSessionManager {
 
   async cleanup(): Promise<void> {
     try {
-      if (this.page && !this.page.isClosed()) {
-        await this.page.close();
+      if (this.electronApp) {
+        await this.electronApp.close();
       }
     } catch (error) {
-      console.error("Error closing page:", error);
+      console.error("Error closing Electron app:", error);
     }
-
-    try {
-      if (this.context) {
-        await this.context.close();
-      }
-    } catch (error) {
-      console.error("Error closing context:", error);
-    }
-
-    try {
-      if (this.browser && this.browser.isConnected()) {
-        await this.browser.close();
-      }
-    } catch (error) {
-      console.error("Error closing browser:", error);
-    }
-
-    await this.killExistingChromiumProcesses();
-
+    this.electronApp = null;
     this.page = null;
     this.context = null;
-    this.browser = null;
   }
 
-  getBrowser(): playwright.Browser | null {
-    return this.browser;
+  getElectronApp(): ElectronApplication | null {
+    return this.electronApp;
   }
 
   getContext(): playwright.BrowserContext | null {
